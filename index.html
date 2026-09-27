@@ -6,18 +6,18 @@
 <title>点前 — 抹茶を点てる</title>
 <style>
   :root {
-    --sumi: #1b1a17;      /* 墨 */
-    --urushi: #2b2622;    /* 漆 */
-    --washi: #efe9dc;     /* 和紙 */
-    --matcha: #6f8f3f;    /* 抹茶 */
-    --koke: #3f5a2a;      /* 苔 */
-    --awa: #b7cf8a;       /* 泡 */
-    --momo: #e8a9a0;      /* 桃（ぽちゃおの頬） */
+    --sumi: #141311;      /* 墨 */
+    --urushi: #1d1a17;    /* 漆 */
+    --washi: #e2dacb;     /* 和紙 */
+    --matcha: #667a3c;    /* 抹茶 */
+    --koke: #3a4a28;      /* 苔 */
+    --awa: #a9b88a;       /* 泡 */
+    --kincha: #b08d57;    /* 金茶 */
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; overflow: hidden; }
   body {
-    background: var(--sumi);
+    background: var(--sumi) url("images/game/chashitsu.webp") center / cover no-repeat;
     color: var(--washi);
     font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", serif;
     -webkit-user-select: none; user-select: none;
@@ -27,6 +27,8 @@
   #app {
     position: relative; height: 100%;
     display: flex; flex-direction: column; align-items: center;
+    /* 文字が読めるよう、上下を闇に沈める */
+    background: linear-gradient(to bottom, rgba(20,19,17,.72), rgba(20,19,17,.2) 28%, rgba(20,19,17,.3) 62%, rgba(20,19,17,.92) 88%);
   }
 
   /* 縦書きのタイトル（左上） */
@@ -38,7 +40,7 @@
   }
   .title small {
     display: block; margin-right: 8px; padding-top: 2px;
-    font-size: 11px; letter-spacing: .3em; color: var(--awa); opacity: .8;
+    font-size: 11px; letter-spacing: .3em; color: var(--kincha); opacity: .9;
   }
 
   /* 残り時間（右上） */
@@ -51,27 +53,18 @@
 
   canvas { display: block; touch-action: none; }
 
-  /* ぽちゃおのひとこと（縦書きの吹き出し） */
-  .bubble {
+  /* 茶人のひとこと（縦書き、賛のように添える） */
+  .word {
     position: absolute; left: 0; top: 0;
     writing-mode: vertical-rl;
-    font-size: 13px; letter-spacing: .18em; line-height: 1; white-space: nowrap;
-    color: var(--sumi); background: var(--washi);
-    padding: 12px 9px; border-radius: 14px;
+    font-size: 14px; letter-spacing: .32em; line-height: 1; white-space: nowrap;
+    color: var(--washi); text-shadow: 0 0 6px #000, 0 0 2px #000;
+    padding: 2px 0 2px 9px; border-left: 1px solid var(--kincha);
     pointer-events: none;
-    opacity: 0; transform: scale(.7); transform-origin: left 30%;
-    transition: opacity .25s, transform .35s cubic-bezier(.3,1.6,.5,1);
+    opacity: 0; transform: translateY(-6px);
+    transition: opacity .6s, transform .6s;
   }
-  .bubble.show { opacity: .94; transform: scale(1); }
-  .bubble::before {
-    content: ""; position: absolute; top: 26px; left: -7px;
-    border: 5px solid transparent; border-right: 8px solid var(--washi); border-left: 0;
-  }
-  .bubble.flip { transform-origin: right 30%; }
-  .bubble.flip::before {
-    left: auto; right: -7px;
-    border-right: 0; border-left: 8px solid var(--washi);
-  }
+  .word.show { opacity: .92; transform: none; }
 
   .hud {
     position: absolute; bottom: 0; left: 0; right: 0;
@@ -85,24 +78,24 @@
     font-variant-numeric: tabular-nums;
   }
   .count span { font-size: 14px; margin-left: 6px; color: var(--washi); opacity: .7; }
-  .count #turns { display: inline-block; font-size: inherit; margin: 0; color: inherit; opacity: 1; }
-  .count #turns.pop { animation: pop .3s cubic-bezier(.3,1.6,.5,1); }
+  .count #turns { font-size: inherit; margin: 0; color: inherit; opacity: 1; }
   .hint { font-size: 14px; opacity: .7; letter-spacing: .1em; }
 
   button {
-    appearance: none; border: 1px solid var(--washi); background: transparent;
+    appearance: none; border: 1px solid rgba(226,218,203,.7); background: rgba(20,19,17,.35);
     color: var(--washi); font: inherit; font-size: 18px; letter-spacing: .3em;
-    padding: 14px 40px 14px 44px; border-radius: 999px; cursor: pointer;
+    padding: 14px 40px 14px 44px; border-radius: 3px; cursor: pointer;
     transition: background .15s, color .15s;
   }
   button:active, button:focus-visible { background: var(--washi); color: var(--sumi); outline: none; }
 
   /* 評価画面 */
   .result {
-    position: absolute; inset: 0; background: var(--urushi);
+    position: absolute; inset: 0;
+    background: linear-gradient(rgba(29,26,23,.9), rgba(20,19,17,.97)), url("images/game/chashitsu.webp") center / cover no-repeat;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 24px 28px; text-align: center; gap: 12px;
-    opacity: 0; visibility: hidden; transition: opacity .5s;
+    opacity: 0; visibility: hidden; transition: opacity .8s;
   }
   .result.show { opacity: 1; visibility: visible; }
   .result .rank {
@@ -110,69 +103,71 @@
     color: var(--washi);
   }
 
-  /* 評価画面のぽちゃお */
-  .stage { position: relative; flex-shrink: 0; height: min(25vh, 200px); aspect-ratio: 1 / 1; }
-  .stage::before {           /* 足もとのあかり */
-    content: ""; position: absolute; left: 8%; right: 8%; bottom: -4%; height: 22%;
-    background: radial-gradient(closest-side, rgba(183,207,138,.2), transparent);
-  }
-  .stage img {
-    position: absolute; left: 0; bottom: 0; width: 100%; height: 100%;
-    object-fit: contain; object-position: center bottom;
+  /* 評価画面の茶人 */
+  .stage { position: relative; flex-shrink: 0; height: min(30vh, 250px); aspect-ratio: 448 / 576; }
+  .stage .face {
+    position: absolute; inset: 0; width: 100%; height: 100%;
     transform-origin: 50% 100%; pointer-events: none;
   }
-  .result.show .stage { animation: enter .7s cubic-bezier(.3,1.5,.5,1) both; }
-  .stage[data-mood="sleep"] img   { animation: breathe 3.2s ease-in-out infinite; }
-  .stage[data-mood="sad"] img     { animation: sway 3.4s ease-in-out infinite; }
-  .stage[data-mood="wink"] img    { animation: hop 1s ease-in-out infinite; }
-  .stage[data-mood="drink"] img   { animation: sway 2.6s ease-in-out infinite; }
-  .stage[data-mood="sparkle"] img { animation: hop .62s ease-in-out infinite; }
-  .stage[data-mood="inbowl"] img  { animation: bob 2.8s ease-in-out infinite; }
-  .stage i {
-    position: absolute; font-style: normal; color: var(--awa); opacity: 0;
-    animation: floatup 2.4s ease-out infinite;
-  }
-  .stage[data-mood="sparkle"] i, .stage[data-mood="inbowl"] i { animation-name: twinkle; animation-duration: 1.6s; }
-  .stage[data-mood="drink"] i { color: var(--momo); }
+  .result.show .stage { animation: enter 1.2s ease-out both; }
+  .stage[data-mood="sigh"] .face  { animation: droop 4.2s ease-in-out infinite; }
+  .stage[data-mood="nod"] .face   { animation: nod 3.2s ease-in-out infinite; }
+  .stage[data-mood="drink"] .face { animation: breathe 4.4s ease-in-out infinite; }
+  .stage[data-mood="smile"] .face { animation: breathe 4s ease-in-out infinite; }
+  .stage[data-mood="joy"] .face   { animation: chuckle .9s ease-in-out infinite; }
 
-  .voice { font-size: 14px; letter-spacing: .08em; color: var(--awa); min-height: 1.4em; }
-  .voice::before { content: "ぽちゃお「"; opacity: .7; }
+  /* ほうびの菓子（少しだけ、かわいいもの） */
+  .treat {
+    position: absolute; right: -24%; bottom: -3%; width: 52%;
+    opacity: 0; pointer-events: none;
+  }
+  .stage.rewarded .treat { animation: serve 1s 1s cubic-bezier(.3,1.4,.5,1) both; }
+  .stage i {
+    position: absolute; right: -12%; top: 46%; font-style: normal; font-size: 15px;
+    color: var(--kincha); opacity: 0;
+  }
+  .stage[data-mood="joy"] i { animation: floatup 2.8s 1.8s ease-out infinite; }
+
+  .voice { font-size: 15px; letter-spacing: .2em; color: var(--kincha); min-height: 1.4em; }
+  .voice::before { content: "「"; opacity: .7; }
   .voice::after { content: "」"; opacity: .7; }
   .result .comment { font-size: 15px; line-height: 1.8; opacity: .85; max-width: 22em; }
   .result .stats { font-size: 14px; opacity: .7; letter-spacing: .1em; }
   .rikyu { width: min(300px, 80vw); }
   .rikyu .label { font-size: 14px; letter-spacing: .4em; opacity: .75; }
   .rikyu .value {
-    font-size: clamp(48px, 17vw, 84px); line-height: 1; color: var(--awa);
+    font-size: clamp(44px, 15vw, 76px); line-height: 1; color: var(--awa);
     font-variant-numeric: tabular-nums;
   }
   .rikyu .value small { font-size: .35em; margin-left: 4px; color: var(--washi); }
-  .rikyu .bar { height: 2px; background: rgba(239,233,220,.2); margin-top: 12px; }
-  .rikyu .bar i { position: relative; display: block; height: 100%; width: 0; background: var(--awa); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
-  .rikyu .bar i::after {     /* 肉球のしるし */
-    content: ""; position: absolute; right: -9px; top: -9px; width: 18px; height: 18px;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23b7cf8a'%3E%3Cellipse cx='10' cy='13' rx='5' ry='4'/%3E%3Ccircle cx='3.6' cy='8.6' r='2'/%3E%3Ccircle cx='7.6' cy='5' r='2.1'/%3E%3Ccircle cx='12.4' cy='5' r='2.1'/%3E%3Ccircle cx='16.4' cy='8.6' r='2'/%3E%3C/svg%3E") center / contain no-repeat;
+  .rikyu .bar { height: 1px; background: rgba(226,218,203,.2); margin-top: 12px; }
+  .rikyu .bar i { position: relative; display: block; height: 100%; width: 0; background: var(--kincha); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+  .rikyu .bar i::after {     /* 目盛りのしるし */
+    content: ""; position: absolute; right: -4px; top: -3px; width: 7px; height: 7px;
+    background: var(--kincha); transform: rotate(45deg);
   }
   .result button { margin-top: 8px; }
 
-  @keyframes pop     { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
-  @keyframes enter   { 0% { transform: translateY(24px) scale(.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
-  @keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.02, 1.05); } }
-  @keyframes sway    { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
-  @keyframes hop     { 0%, 100% { transform: translateY(0) scale(1.04, .96); } 45% { transform: translateY(-9%) scale(.97, 1.03); } }
-  @keyframes bob     { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-4%) rotate(1.5deg); } }
-  @keyframes floatup { 0% { opacity: 0; transform: translateY(0) scale(.6); } 25% { opacity: .9; } 100% { opacity: 0; transform: translate(10px, -46px) scale(1.2); } }
-  @keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(40deg); } }
+  @keyframes enter   { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: none; } }
+  @keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.006, 1.012); } }
+  @keyframes droop   { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.2%); } }
+  @keyframes nod     { 0%, 55%, 100% { transform: translateY(0); } 70% { transform: translateY(1.6%); } 85% { transform: translateY(.2%); } }
+  @keyframes chuckle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-.9%); } }
+  @keyframes serve   { 0% { opacity: 0; transform: translateY(14px) scale(.85); } 100% { opacity: 1; transform: none; } }
+  @keyframes floatup { 0% { opacity: 0; transform: translateY(0); } 25% { opacity: .9; } 100% { opacity: 0; transform: translate(8px, -40px); } }
 
-  /* 横向きのスマホ：ぽちゃおを左、評価を右に並べる */
+  /* 横向きのスマホ：茶人を左、評価を右に並べる */
+  @media (orientation: landscape) {
+    body { background-image: url("images/game/chashitsu_wide.webp"); }
+  }
   @media (orientation: landscape) and (max-height: 560px) {
     .result {
       display: grid; grid-template-columns: auto minmax(0, 24em); grid-auto-rows: min-content;
       align-content: center; justify-content: center; justify-items: center;
-      column-gap: 32px; row-gap: 6px; padding: 12px 28px;
+      column-gap: 56px; row-gap: 6px; padding: 12px 28px;
     }
     .result > * { grid-column: 2; }
-    .stage { grid-column: 1; grid-row: 1 / span 6; align-self: center; height: min(66vh, 260px); }
+    .stage { grid-column: 1; grid-row: 1 / span 6; align-self: center; height: min(80vh, 320px); }
     .result .rank { font-size: 32px; }
     .result .comment { font-size: 13px; line-height: 1.6; }
     .rikyu .value { font-size: 44px; }
@@ -180,18 +175,18 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .result, .rikyu .bar i, .bubble { transition: none; }
-    .stage, .stage img, .stage i, .count #turns.pop { animation: none !important; }
-    .stage i { opacity: .8; }
+    .result, .rikyu .bar i, .word { transition: none; }
+    .stage, .stage .face, .stage i { animation: none !important; }
+    .stage.rewarded .treat { animation: none; opacity: 1; }
   }
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="title">抹茶を点てる<small>ぽちゃおと いっしょに</small></div>
+  <div class="title">抹茶を点てる<small>茶人の御前にて</small></div>
   <div class="timer"><span id="time">10.0</span><small>秒</small></div>
   <canvas id="c"></canvas>
-  <div class="bubble" id="bubble"></div>
+  <div class="word" id="word"></div>
   <div class="hud">
     <div class="count"><span id="turns">0</span><span>回転</span></div>
     <div class="hint" id="hint">茶筅を回すように、茶碗の上でぐるぐる</div>
@@ -200,7 +195,11 @@
 
   <div class="result" id="result">
     <div class="rank" id="rank"></div>
-    <div class="stage" id="stage"><img id="pochaoImg" alt="ぽちゃお" draggable="false"></div>
+    <div class="stage" id="stage">
+      <img class="face" id="face" alt="茶人" draggable="false">
+      <img class="treat" src="images/game/wagashi.webp" alt="" draggable="false">
+      <i>♪</i>
+    </div>
     <div class="voice" id="voice"></div>
     <div class="comment" id="comment"></div>
     <div class="stats" id="stats"></div>
@@ -221,19 +220,21 @@
   const $ = id => document.getElementById(id);
   const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---------- ぽちゃおの絵（ComfyUI で生成） ---------- */
-  const BASE_H = 469;                   // idle の高さ。ほかの絵はこれを基準に縮尺をそろえる
-  const SPRITES = {};
-  ['idle', 'blink', 'whisk', 'cheer', 'sleep', 'sad', 'wink', 'drink', 'sparkle', 'inbowl'].forEach(n => {
-    const im = new Image(); im.src = `images/game/pochao_${n}.webp`; SPRITES[n] = im;
+  /* ---------- 茶人の絵（ComfyUI で生成し、GIMP で調整） ---------- */
+  const ASPECT = 448 / 576;             // どの表情も同じ大きさ・同じ位置で描いてある
+  const FACES = {};
+  ['idle', 'blink', 'watch', 'impressed', 'sigh', 'glare', 'nod', 'drink', 'smile', 'joy'].forEach(n => {
+    const im = new Image(); im.src = `images/game/tyajin_${n}.webp`; FACES[n] = im;
   });
-  const ANCHOR = { whisk: .55 };        // 体の中心が絵の左から何割の位置か（既定 .5）
+  const sweet = new Image(); sweet.src = 'images/game/wagashi.webp';
+  const ready = im => im.complete && im.naturalWidth > 0;
 
   let W, H, cx, cy, R, dpr;
   let playing = false, endAt = 0, angleAcc = 0, lastAngle = null, taps = 0;
   let turns = 0, foam = 0, whisk = { a: 0, active: false }, particles = [];
-  let fx = [], ambient = [], lastT = 0, spin = 0, speed = 0;
-  const po = { x: 0, y: 0, h: 0, side: false, hop: 0, vy: 0, squash: 0, tilt: 0, nextBlink: 2500, blinkUntil: 0, cheerUntil: 0 };
+  let motes = [], lastT = 0, spin = 0, speed = 0;
+  const master = { x: 0, y: 0, h: 0, nod: 0, lean: 0, nextBlink: 2500, blinkUntil: 0, awedUntil: 0, lastSpurt: false };
+  const bird = { x: 0, y: 0, w: 0, hop: 0, vy: 0 };
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -241,144 +242,140 @@
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx = W / 2; cy = H * 0.44; R = Math.min(W, H) * 0.3;
+    const side = W > H * 1.15;          // 横画面
+    cx = W / 2; cy = H * (side ? .44 : .52); R = Math.min(W, H) * 0.3;
 
-    // ぽちゃおの居場所：縦画面は茶碗の向こう、横画面は茶碗の左どなり
-    po.side = W > H * 1.15;
-    if (po.side) {
-      po.h = Math.min(R * 1.6, H * .5);
-      po.x = cx - R * 1.18 - po.h * .45; po.y = cy + R * .95;
+    // 茶人の居場所：縦画面は茶碗の向こう正面、横画面は茶碗の左
+    if (side) {
+      master.h = Math.min(H * .7, cy + R - 8);
+      master.x = cx - R * 1.18 - master.h * ASPECT * .5; master.y = cy + R;
     } else {
-      po.h = Math.max(70, Math.min(R * 1.4, cy - R * .89 - 14));
-      po.x = cx; po.y = cy - R * 1.05 + po.h * .1;
+      master.y = cy - R * .5;
+      master.h = Math.min(master.y - 10, W * .95 / ASPECT);
+      master.x = cx;
     }
-    const b = $('bubble'), pw = po.h * .85;
-    b.classList.toggle('flip', po.side);
-    b.style.left = (po.side ? po.x - pw / 2 - 38 : po.x + pw / 2 + 4) + 'px';
-    b.style.top = Math.max(po.y - po.h * .9, po.side ? 12 : 96) + 'px';
+    // 菓子皿は茶碗の右手前に
+    bird.w = R * .62;
+    bird.x = Math.min(cx + R * 1.02, W - bird.w / 2 - 8); bird.y = cy + R * 1.12;
+
+    const w = $('word');
+    w.style.left = (master.x + master.h * ASPECT * .27) + 'px';
+    w.style.top = Math.max(master.y - master.h * .88, side ? 12 : 96) + 'px';
   }
   window.addEventListener('resize', resize);
   resize();
 
-  // 背景をゆっくり舞う茶葉
-  if (!calm) for (let i = 0; i < 7; i++) ambient.push({
-    x: Math.random(), y: Math.random(), s: 5 + Math.random() * 5, v: .012 + Math.random() * .014,
-    ph: Math.random() * 6.28, rot: Math.random() * 6.28, vr: (Math.random() - .5) * .0012
+  // 障子のあかりに浮かぶ、ちり
+  if (!calm) for (let i = 0; i < 16; i++) motes.push({
+    x: Math.random(), y: Math.random(), r: .5 + Math.random() * 1.1,
+    vx: (Math.random() - .3) * .006, vy: -.002 - Math.random() * .006, ph: Math.random() * 6.28
   });
 
-  /* ---------- 吹き出し ---------- */
-  let bubbleTimer = 0;
+  /* ---------- 茶人のひとこと ---------- */
+  let wordTimer = 0;
   function say(text, ms) {
-    const b = $('bubble');
-    clearTimeout(bubbleTimer);
-    if (!text) { b.classList.remove('show'); return; }
-    b.textContent = text; b.classList.add('show');
-    if (ms) bubbleTimer = setTimeout(() => b.classList.remove('show'), ms);
+    const w = $('word');
+    clearTimeout(wordTimer);
+    if (!text) { w.classList.remove('show'); return; }
+    w.textContent = text; w.classList.add('show');
+    if (ms) wordTimer = setTimeout(() => w.classList.remove('show'), ms);
   }
-  const IDLE_LINES = ['いっしょに点てよ？', 'ぐるぐる〜ってね', 'お茶のいい香り…'];
+  const IDLE_LINES = ['点ててみよ', '手首は、やわらかく', '一期一会じゃ'];
   let idleLine = 0;
-  setInterval(() => { if (!playing && !$('result').classList.contains('show')) say(IDLE_LINES[++idleLine % IDLE_LINES.length]); }, 4200);
+  setInterval(() => { if (!playing && !$('result').classList.contains('show')) say(IDLE_LINES[++idleLine % IDLE_LINES.length]); }, 5200);
   say(IDLE_LINES[0]);
-  const CHEERS = { 3: 'そのちょうし！', 8: 'いい香り〜', 14: 'ふわふわ！', 22: 'すごいすごい！', 30: 'きらきらの泡…！', 40: 'りきゅうさま…？' };
+  const REMARKS = { 3: 'うむ', 8: 'その調子', 14: 'よい香りだ', 22: 'ほう……', 30: '見事', 40: '……まさか' };
 
   /* ---------- 描画 ---------- */
-  function leaf(x, y, s, rot, alpha, fill) {
-    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha = alpha;
-    ctx.fillStyle = fill;
-    ctx.beginPath(); ctx.moveTo(0, -s); ctx.quadraticCurveTo(s * .75, 0, 0, s); ctx.quadraticCurveTo(-s * .75, 0, 0, -s); ctx.fill();
-    ctx.strokeStyle = 'rgba(27,26,23,.35)'; ctx.lineWidth = .8;
-    ctx.beginPath(); ctx.moveTo(0, -s * .8); ctx.lineTo(0, s * .8); ctx.stroke();
-    ctx.restore();
-  }
-  function heart(x, y, s, alpha) {
-    ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha; ctx.fillStyle = '#e8a9a0';
-    ctx.beginPath(); ctx.moveTo(0, s * .9);
-    ctx.bezierCurveTo(-s * 1.3, -s * .1, -s * .6, -s * 1.1, 0, -s * .35);
-    ctx.bezierCurveTo(s * .6, -s * 1.1, s * 1.3, -s * .1, 0, s * .9); ctx.fill();
-    ctx.restore();
-  }
-  function paw(x, y, s, alpha) {        // 泡で描く肉球
-    ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha; ctx.fillStyle = 'rgb(236,244,214)';
-    ctx.beginPath(); ctx.ellipse(0, s * .3, s * .55, s * .42, 0, 0, Math.PI * 2); ctx.fill();
-    [[-.62, -.12], [-.22, -.52], [.22, -.52], [.62, -.12]].forEach(([dx, dy]) => {
-      ctx.beginPath(); ctx.ellipse(dx * s, dy * s, s * .19, s * .23, dx * .5, 0, Math.PI * 2); ctx.fill();
-    });
-    ctx.restore();
-  }
+  function drawMaster(t, dt) {
+    master.nod *= Math.pow(.9, dt / 16);
+    const target = calm ? 0 : (playing && whisk.active ? Math.sin(whisk.a) * .018 : 0);
+    master.lean += (target - master.lean) * Math.min(1, dt / 200);
 
-  function drawPochao(t, dt) {
-    // 跳ねる・つぶれる・かしげる
-    if (po.hop < 0 || po.vy < 0) {
-      po.hop += po.vy * dt; po.vy += .000009 * dt;
-      if (po.hop >= 0) { po.hop = 0; po.vy = 0; po.squash = 1; }
-    }
-    po.squash *= Math.pow(.86, dt / 16);
-    const target = calm ? 0 : (playing && whisk.active ? Math.sin(whisk.a) * .09 : Math.sin(t / 1400) * .025);
-    po.tilt += (target - po.tilt) * Math.min(1, dt / 120);
+    // いまの表情を決める
+    if (t > master.nextBlink) { master.blinkUntil = t + 150; master.nextBlink = t + 2600 + Math.random() * 3400; }
+    let name = t < master.blinkUntil ? 'blink' : 'idle';
+    if (playing) name = t < master.awedUntil ? 'impressed' : 'watch';
+    let im = FACES[name];
+    if (!ready(im)) im = FACES.idle;
+    if (!ready(im)) return;
 
-    // いまの絵を決める
-    if (t > po.nextBlink) { po.blinkUntil = t + 140; po.nextBlink = t + 2200 + Math.random() * 2800; }
-    let name = t < po.blinkUntil ? 'blink' : 'idle';
-    if (playing) name = (t < po.cheerUntil || endAt - t < 3000) ? 'cheer' : 'whisk';
-    let im = SPRITES[name];
-    if (!im.complete || !im.naturalWidth) im = SPRITES.idle;
-    if (!im.complete || !im.naturalWidth) return;
-
-    const k = po.h / BASE_H, w = im.naturalWidth * k, h = im.naturalHeight * k;
-    const breath = calm ? 0 : Math.sin(t / 620);
-    const sx = (1 - breath * .008) * (1 + po.squash * .09), sy = (1 + breath * .014) * (1 - po.squash * .11);
+    const h = master.h, w = h * ASPECT;
+    const breath = calm ? 0 : Math.sin(t / 900);
     ctx.save();
-    ctx.translate(po.x, po.y + po.hop * po.h); ctx.rotate(po.tilt); ctx.scale(sx, sy);
-    ctx.drawImage(im, -w * (ANCHOR[name] || .5), -h, w, h);
+    ctx.translate(master.x, master.y + master.nod * h * .018);
+    ctx.rotate(master.lean); ctx.scale(1 - breath * .003, 1 + breath * .006);
+    ctx.drawImage(im, -w / 2, -h, w, h);
     ctx.restore();
+  }
+
+  function drawBird(dt) {
+    if (bird.hop < 0 || bird.vy < 0) {
+      bird.hop += bird.vy * dt; bird.vy += .00001 * dt;
+      if (bird.hop >= 0) { bird.hop = 0; bird.vy = 0; }
+    }
+    if (!ready(sweet)) return;
+    const w = bird.w, h = w * sweet.naturalHeight / sweet.naturalWidth;
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(bird.x, bird.y + h * .42, w * .5, h * .2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(sweet, bird.x - w / 2, bird.y - h / 2 + bird.hop * w, w, h);
   }
 
   function draw(t) {
     const dt = Math.min(50, t - lastT || 16); lastT = t;
     ctx.clearRect(0, 0, W, H);
 
-    // 舞う茶葉
-    ambient.forEach(a => {
-      a.y += a.v * dt / 1000 * 4; a.rot += a.vr * dt; if (a.y > 1.05) { a.y = -.05; a.x = Math.random(); }
-      leaf((a.x + Math.sin(t / 2600 + a.ph) * .04) * W, a.y * H, a.s, a.rot, .2, '#6f8f3f');
+    // ちり
+    motes.forEach(m => {
+      m.x += m.vx * dt / 1000; m.y += m.vy * dt / 1000;
+      if (m.y < -.02) { m.y = 1.02; m.x = Math.random(); }
+      if (m.x > 1.02) m.x = -.02; if (m.x < -.02) m.x = 1.02;
+      ctx.fillStyle = `rgba(226,218,203,${.1 + .12 * (1 + Math.sin(t / 1700 + m.ph)) / 2})`;
+      ctx.beginPath(); ctx.arc(m.x * W, m.y * H, m.r, 0, Math.PI * 2); ctx.fill();
     });
 
-    // 回す速さ（ぽちゃおの応援に使う）
+    // 回す速さ（茶人が目を見はる）
     speed += (spin / dt - speed) * .12; spin = 0;
-    if (playing && speed > .011) po.cheerUntil = t + 500;
+    if (playing && speed > .013) master.awedUntil = t + 700;
 
-    drawPochao(t, dt);
+    drawMaster(t, dt);
 
     // 畳の影
-    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
     ctx.beginPath(); ctx.ellipse(cx, cy + R * 1.05, R * 1.25, R * 0.28, 0, 0, Math.PI * 2); ctx.fill();
 
     // 茶碗の外側（楽茶碗ふう）
     const bowl = ctx.createRadialGradient(cx - R * .4, cy - R * .5, R * .2, cx, cy, R * 1.3);
-    bowl.addColorStop(0, '#5a4a40'); bowl.addColorStop(1, '#1e1714');
+    bowl.addColorStop(0, '#4d4038'); bowl.addColorStop(1, '#171210');
     ctx.fillStyle = bowl;
     ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.18, R * 1.05, 0, 0, Math.PI * 2); ctx.fill();
 
     // 口縁
-    ctx.strokeStyle = 'rgba(239,233,220,.25)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(226,218,203,.22)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.05, R * .93, 0, 0, Math.PI * 2); ctx.stroke();
 
     // 液面：泡立ちに応じて色が変わる
     const f = Math.min(foam, 1);
     const lerp = (a, b, k) => Math.round(a + (b - a) * k);
-    const col = `rgb(${lerp(70, 183, f)},${lerp(110, 207, f)},${lerp(50, 138, f)})`;
+    const col = `rgb(${lerp(62, 165, f)},${lerp(96, 186, f)},${lerp(46, 126, f)})`;
     const liq = ctx.createRadialGradient(cx - R * .25, cy - R * .3, R * .1, cx, cy, R);
-    liq.addColorStop(0, col); liq.addColorStop(1, `rgb(${lerp(45,110,f)},${lerp(80,140,f)},${lerp(35,70,f)})`);
+    liq.addColorStop(0, col); liq.addColorStop(1, `rgb(${lerp(38,98,f)},${lerp(68,124,f)},${lerp(30,64,f)})`);
     ctx.fillStyle = liq;
     ctx.beginPath(); ctx.ellipse(cx, cy, R, R * .88, 0, 0, Math.PI * 2); ctx.fill();
 
-    // よく泡立つと、肉球のもようが浮かぶ
-    if (foam > .3) paw(cx, cy, R * .42, Math.min(.5, (foam - .3) * .9));
+    // よく泡立つと、仕上げの「の」の字が浮かぶ
+    if (foam > .2) {
+      ctx.save(); ctx.globalAlpha = Math.min(.45, (foam - .2) * 1.1);
+      ctx.fillStyle = 'rgb(226,234,206)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `${R * 1.05}px "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", serif`;
+      ctx.translate(cx, cy); ctx.scale(1, .88); ctx.fillText('の', 0, R * .04);
+      ctx.restore();
+    }
 
     // 渦（回転中）
     if (playing) {
       ctx.save(); ctx.beginPath(); ctx.ellipse(cx, cy, R, R * .88, 0, 0, Math.PI * 2); ctx.clip();
-      ctx.strokeStyle = 'rgba(239,233,220,.18)'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(226,218,203,.16)'; ctx.lineWidth = 1.5;
       for (let i = 0; i < 3; i++) {
         ctx.beginPath();
         for (let a = 0; a < Math.PI * 4; a += .15) {
@@ -394,7 +391,7 @@
 
     // 泡の粒
     particles.forEach(p => {
-      ctx.fillStyle = `rgba(230,240,205,${p.life * .8})`;
+      ctx.fillStyle = `rgba(226,234,206,${p.life * .75})`;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
       p.life -= .02; p.x += p.vx; p.y += p.vy;
     });
@@ -402,11 +399,11 @@
 
     // 湯気
     if (foam > .25 && !calm) {
-      ctx.save(); ctx.strokeStyle = `rgba(239,233,220,${Math.min(.16, foam * .14)})`; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.save(); ctx.strokeStyle = `rgba(226,218,203,${Math.min(.14, foam * .12)})`; ctx.lineWidth = 3; ctx.lineCap = 'round';
       for (let i = -1; i <= 1; i++) {
         ctx.beginPath();
         for (let s = 0; s <= 1; s += .1) {
-          const x = cx + i * R * .3 + Math.sin(s * 5 + t / 700 + i * 2) * R * .07 * s, y = cy - R * .2 - s * R * .9;
+          const x = cx + i * R * .3 + Math.sin(s * 5 + t / 900 + i * 2) * R * .07 * s, y = cy - R * .2 - s * R * .9;
           s === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         }
         ctx.stroke();
@@ -414,10 +411,12 @@
       ctx.restore();
     }
 
+    drawBird(dt);
+
     // 茶筅
     if (playing) {
       const wx = cx + Math.cos(whisk.a) * R * .45, wy = cy + Math.sin(whisk.a) * R * .4;
-      ctx.strokeStyle = '#c9b38a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.strokeStyle = '#b9a37c'; ctx.lineWidth = 3; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(wx, wy - R * .05); ctx.lineTo(wx + R * .25, wy - R * 1.1); ctx.stroke();
       ctx.lineWidth = 1;
       for (let i = -4; i <= 4; i++) {
@@ -426,18 +425,10 @@
       }
     }
 
-    // ぽちゃおから飛び出す葉っぱとハート
-    fx.forEach(p => {
-      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += .00012 * dt; p.rot += p.vr * dt; p.life -= dt / 900;
-      const a = Math.max(0, Math.min(1, p.life * 1.6));
-      p.heart ? heart(p.x, p.y, p.s, a) : leaf(p.x, p.y, p.s, p.rot, a, '#8fb04f');
-    });
-    fx = fx.filter(p => p.life > 0);
-
     if (playing) {
       const left = Math.max(0, (endAt - t) / 1000);
       $('time').textContent = left.toFixed(1);
-      if (left < 3 && !po.lastSpurt) { po.lastSpurt = true; say('あとすこし！', 1500); }
+      if (left < 3 && !master.lastSpurt) { master.lastSpurt = true; say('あと少し', 1800); }
       if (left <= 0) finish();
     }
     requestAnimationFrame(draw);
@@ -451,15 +442,12 @@
     particles.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r * .88,
       r: 1 + Math.random() * 3, vx: (Math.random() - .5) * .6, vy: -.3 - Math.random() * .4, life: 1 });
   }
-  function cheer() {                    // 一回転ごとに、ぴょんと跳ねてよろこぶ
+  function remark() {                   // 節目の回転で、茶人がうなずき、ひとこと
+    if (!REMARKS[turns]) return;
+    say(REMARKS[turns], 1800);
     if (calm) return;
-    if (po.hop === 0 && po.vy === 0) po.vy = -.0011;
-    const side = turns % 2 ? 1 : -1;    // 顔にかぶらないよう、左右の肩ごしに交互に
-    fx.push({
-      x: po.x + side * po.h * (.34 + Math.random() * .12), y: po.y - po.h * (.6 + Math.random() * .3),
-      vx: side * (.03 + Math.random() * .05), vy: -.09 - Math.random() * .05, rot: Math.random() * 6.28, vr: (Math.random() - .5) * .008,
-      s: 4 + Math.random() * 3, life: 1, heart: speed > .011
-    });
+    master.nod = 1;
+    if (bird.hop === 0 && bird.vy === 0) bird.vy = -.0012;   // 菓子の小鳥も、こっそり跳ねる
   }
   function angleAt(e) { return Math.atan2(e.clientY - cy, e.clientX - cx); }
 
@@ -478,12 +466,7 @@
     lastAngle = a; whisk.a = a;
     angleAcc += Math.abs(d); spin += Math.abs(d);
     const t = Math.floor(angleAcc / (Math.PI * 2));
-    if (t !== turns) {
-      turns = t; addFoam(2); cheer();
-      const el = $('turns'); el.textContent = turns;
-      el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
-      if (CHEERS[turns]) say(CHEERS[turns], 1500);
-    }
+    if (t !== turns) { turns = t; $('turns').textContent = turns; addFoam(2); remark(); }
   });
   const up = () => { lastAngle = null; whisk.active = false; };
   canvas.addEventListener('pointerup', up);
@@ -491,14 +474,13 @@
 
   /* ---------- 進行 ---------- */
   function start() {
-    playing = true; angleAcc = 0; turns = 0; taps = 0; foam = 0; particles = []; fx = [];
-    speed = 0; spin = 0; po.cheerUntil = 0; po.lastSpurt = false;
+    playing = true; angleAcc = 0; turns = 0; taps = 0; foam = 0; particles = [];
+    speed = 0; spin = 0; master.awedUntil = 0; master.lastSpurt = false;
     $('turns').textContent = '0';
     $('start').hidden = true; $('hint').textContent = '茶筅を回して、泡を立てる';
     $('result').classList.remove('show');
     endAt = performance.now() + DURATION * 1000;
-    if (!calm) po.vy = -.0013;
-    say('がんばって〜！', 1400);
+    say('参られよ', 1600);
   }
   function finish() {
     playing = false; up();
@@ -508,14 +490,14 @@
     showResult(turns, taps);
   }
 
-  // [回転数, 位, 講評, ぽちゃおの絵, ぽちゃおのひとこと, まわりに浮かぶ文字]
+  // [回転数, 位, 講評, 茶人の表情, 茶人のひとこと, ほうびの菓子]
   const RANKS = [
-    [0,  '緑の水',     '茶筅は飾りではありません。まずは手を動かしましょう。', 'sleep', 'むにゃ……まだかなぁ……', 'zzZ'],
-    [4,  '見習い',     '泡はまばら。しかし志は伝わります。明日も点てましょう。', 'sad', 'つぎは きっと だいじょうぶ…！', ''],
-    [10, '茶人見習い', 'きめの粗い泡が立ちました。稽古を重ねれば形になります。', 'wink', 'いいかんじ！ もういっかい？', '♪♪'],
-    [18, '茶人',       '細かな泡がふわりと立ち、香りが立ちのぼりました。一服、見事です。', 'drink', 'はぁ〜、おいしい…しあわせ…', '♡♡'],
-    [28, '宗匠',       '泡は絹のごとく、茶碗は静かに湯気をたてる。侘びの境地です。', 'sparkle', 'すごいすごい！ きらきらの泡だ〜！', '✦✦✦✦'],
-    [40, '利休再来',   '一碗に宇宙を見ました。あなたの点前に、時が止まりました。', 'inbowl', 'お茶で もっと しあわせに♪', '✦♪✦♡✦'],
+    [0,  '緑の水',     '茶筅は飾りではありません。まずは手を動かしましょう。', 'sigh', '……湯が、冷めるぞ', false],
+    [4,  '見習い',     '泡はまばら。しかし志は伝わります。明日も点てましょう。', 'glare', '精進されよ', false],
+    [10, '茶人見習い', 'きめの粗い泡が立ちました。稽古を重ねれば形になります。', 'nod', '悪くは、ない', false],
+    [18, '茶人',       '細かな泡がふわりと立ち、香りが立ちのぼりました。一服、見事です。', 'drink', '……うむ。旨い', false],
+    [28, '宗匠',       '泡は絹のごとく、茶碗は静かに湯気をたてる。侘びの境地です。', 'smile', '結構なお点前で', true],
+    [40, '利休再来',   '一碗に宇宙を見ました。あなたの点前に、時が止まりました。', 'joy', 'わしの負けじゃ', true],
   ];
 
   function showResult(turns, taps) {
@@ -531,20 +513,12 @@
     $('stats').textContent = `${turns} 回転 ／ ${taps} タップ`;
     $('rikyu').textContent = '0'; $('bar').style.width = '0';
 
-    // ぽちゃおの反応
+    // 茶人の反応
     const stage = $('stage');
     stage.dataset.mood = rank[3];
-    $('pochaoImg').src = SPRITES[rank[3]].src;
-    stage.querySelectorAll('i').forEach(el => el.remove());
-    [...rank[5]].forEach((ch, i, all) => {
-      const el = document.createElement('i'), side = i % 2 ? 1 : -1;
-      el.textContent = ch;
-      el.style.left = (50 + side * (30 + Math.random() * 16)) + '%';
-      el.style.top = (12 + Math.random() * 40) + '%';
-      el.style.fontSize = (13 + Math.random() * 9) + 'px';
-      el.style.animationDelay = (i / all.length * 2.2).toFixed(2) + 's';
-      stage.appendChild(el);
-    });
+    stage.classList.remove('rewarded'); void stage.offsetWidth;
+    stage.classList.toggle('rewarded', rank[5]);
+    $('face').src = FACES[rank[3]].src;
 
     $('result').classList.add('show');
     // カウントアップ演出
