@@ -43,6 +43,15 @@
     font-size: 11px; letter-spacing: .3em; color: var(--kincha); opacity: .9;
   }
 
+  /* サブタイトル（右下、タイトルと対角に小さく添える） */
+  .subtitle {
+    position: absolute; right: 14px; bottom: calc(16px + env(safe-area-inset-bottom));
+    writing-mode: vertical-rl;
+    font-size: 11px; letter-spacing: .3em; line-height: 1;
+    color: var(--kincha); opacity: .55;
+    pointer-events: none;
+  }
+
   /* 残り時間（右上） */
   .timer {
     position: absolute; top: 20px; right: 22px;
@@ -146,7 +155,10 @@
     content: ""; position: absolute; right: -4px; top: -3px; width: 7px; height: 7px;
     background: var(--kincha); transform: rotate(45deg);
   }
-  .result button { margin-top: 8px; }
+  .result .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 8px; }
+  .result .actions button { padding: 14px 24px 14px 28px; }
+  .result button.sub { border-color: rgba(226,218,203,.35); background: transparent; opacity: .85; }
+  .result button.sub:active, .result button.sub:focus-visible { background: var(--washi); color: var(--sumi); opacity: 1; }
 
   @keyframes enter   { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: none; } }
   @keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.006, 1.012); } }
@@ -171,7 +183,8 @@
     .result .rank { font-size: 32px; }
     .result .comment { font-size: 13px; line-height: 1.6; }
     .rikyu .value { font-size: 44px; }
-    .result button { margin-top: 4px; padding: 10px 36px 10px 40px; font-size: 16px; }
+    .result .actions { margin-top: 4px; }
+    .result .actions button { padding: 10px 22px 10px 26px; font-size: 16px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -208,8 +221,12 @@
       <div class="value"><span id="rikyu">0</span><small>％</small></div>
       <div class="bar"><i id="bar"></i></div>
     </div>
-    <button id="again">もう一服</button>
+    <div class="actions">
+      <button id="again">もう一服</button>
+      <button id="rest" class="sub">ひと休み</button>
+    </div>
   </div>
+  <div class="subtitle">出張者限定ゲーム</div>
 </div>
 
 <script>
@@ -281,9 +298,13 @@
     if (ms) wordTimer = setTimeout(() => w.classList.remove('show'), ms);
   }
   const IDLE_LINES = ['点ててみよ', '手首は、やわらかく', '一期一会じゃ'];
-  let idleLine = 0;
-  setInterval(() => { if (!playing && !$('result').classList.contains('show')) say(IDLE_LINES[++idleLine % IDLE_LINES.length]); }, 5200);
-  say(IDLE_LINES[0]);
+  let idleLine = 0, idleTimer = 0;
+  function idleTalk() {                 // 待つあいだのひとことを、最初の一言から語り直す
+    clearInterval(idleTimer);
+    idleLine = 0; say(IDLE_LINES[0]);
+    idleTimer = setInterval(() => { if (!playing && !$('result').classList.contains('show')) say(IDLE_LINES[++idleLine % IDLE_LINES.length]); }, 5200);
+  }
+  idleTalk();
   const REMARKS = { 3: 'うむ', 8: 'その調子', 14: 'よい香りだ', 22: 'ほう……', 30: '見事', 40: '……まさか' };
 
   /* ---------- 描画 ---------- */
@@ -532,7 +553,17 @@
   }
 
   $('start').addEventListener('click', start);
+  // ひと休み：評価画面を閉じ、点前の前の静かな茶室に戻る
+  function rest() {
+    $('result').classList.remove('show');
+    turns = 0; taps = 0; foam = 0; particles = [];
+    $('turns').textContent = '0'; $('time').textContent = DURATION.toFixed(1);
+    idleTalk();
+    $('start').focus();
+  }
+
   $('again').addEventListener('click', () => { $('result').classList.remove('show'); start(); });
+  $('rest').addEventListener('click', rest);
 })();
 </script>
 </body>
