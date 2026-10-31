@@ -124,6 +124,7 @@
   .stage[data-mood="drink"] .face { animation: breathe 4.4s ease-in-out infinite; }
   .stage[data-mood="smile"] .face { animation: breathe 4s ease-in-out infinite; }
   .stage[data-mood="joy"] .face   { animation: chuckle .9s ease-in-out infinite; }
+  .stage[data-mood="young"] .face { animation: breathe 5s ease-in-out infinite; }
 
   /* ほうびの菓子（少しだけ、かわいいもの） */
   .treat {
@@ -159,6 +160,10 @@
   .result .actions button { padding: 14px 24px 14px 28px; }
   .result button.sub { border-color: rgba(226,218,203,.35); background: transparent; opacity: .85; }
   .result button.sub:active, .result button.sub:focus-visible { background: var(--washi); color: var(--sumi); opacity: 1; }
+  .credit {     /* 若き茶人の絵は Qwen の LoRA で生成。ライセンスの表記 */
+    position: absolute; left: 14px; bottom: calc(14px + env(safe-area-inset-bottom));
+    font-size: 10px; letter-spacing: .05em; color: var(--washi); opacity: .45;
+  }
 
   @keyframes enter   { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: none; } }
   @keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.006, 1.012); } }
@@ -179,6 +184,7 @@
       column-gap: 56px; row-gap: 6px; padding: 12px 28px;
     }
     .result > * { grid-column: 2; }
+    .result > .credit { grid-column: auto; }   /* 列ではなく画面の左下に置く */
     .stage { grid-column: 1; grid-row: 1 / span 6; align-self: center; height: min(80vh, 320px); }
     .result .rank { font-size: 32px; }
     .result .comment { font-size: 13px; line-height: 1.6; }
@@ -225,6 +231,7 @@
       <button id="again">もう一服</button>
       <button id="rest" class="sub">ひと休み</button>
     </div>
+    <div class="credit" id="credit" hidden>Built with Qwen</div>
   </div>
   <div class="subtitle">出張者限定ゲーム</div>
 </div>
@@ -240,7 +247,7 @@
   /* ---------- 茶人の絵（ComfyUI で生成し、GIMP で調整） ---------- */
   const ASPECT = 448 / 576;             // どの表情も同じ大きさ・同じ位置で描いてある
   const FACES = {};
-  ['idle', 'blink', 'watch', 'impressed', 'sigh', 'glare', 'nod', 'drink', 'smile', 'joy'].forEach(n => {
+  ['idle', 'blink', 'watch', 'impressed', 'sigh', 'glare', 'nod', 'drink', 'smile', 'joy', 'young'].forEach(n => {
     const im = new Image(); im.src = `images/game/tyajin_${n}.webp`; FACES[n] = im;
   });
   const sweet = new Image(); sweet.src = 'images/game/wagashi.webp';
@@ -528,18 +535,21 @@
     let rikyu = Math.min(100, Math.round(turns * 2.3 + taps * .4 + (Math.random() * 6 - 3)));
     rikyu = Math.max(0, rikyu);
     if (turns === 0) rikyu = 0;
+    const perfect = rikyu === 100;      // 利休度100％：若き日の茶人が現れる
     $('rank').textContent = rank[1];
     $('comment').textContent = rank[2];
-    $('voice').textContent = rank[4];
+    $('voice').textContent = perfect ? 'この一服、しかと頂戴した' : rank[4];
+    $('credit').hidden = !perfect;
     $('stats').textContent = `${turns} 回転 ／ ${taps} タップ`;
     $('rikyu').textContent = '0'; $('bar').style.width = '0';
 
     // 茶人の反応
     const stage = $('stage');
-    stage.dataset.mood = rank[3];
+    const mood = perfect ? 'young' : rank[3];
+    stage.dataset.mood = mood;
     stage.classList.remove('rewarded'); void stage.offsetWidth;
     stage.classList.toggle('rewarded', rank[5]);
-    $('face').src = FACES[rank[3]].src;
+    $('face').src = FACES[mood].src;
 
     $('result').classList.add('show');
     // カウントアップ演出

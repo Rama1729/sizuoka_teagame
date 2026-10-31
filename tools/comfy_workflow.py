@@ -1,8 +1,10 @@
 """ComfyUI の API 形式ワークフローを生成する。
   t2i : Krea-2 Turbo でテキストから生成
   edit: Qwen Image Edit 2511 (Lightning 4step) で参照画像から派生
-usage: python comfy_workflow.py t2i  <name> <seed> <w> <h> <prompt_file> [rmbg]
-       python comfy_workflow.py edit <name> <seed> <w> <h> <prompt_file> <ref1[,ref2]> [rmbg]
+  style: Qwen-Image 2.1 + 画風 LoRA nobuyabo でテキストから生成（Style_T2I_Qwen21_nobuyabo と同じ構成）
+usage: python comfy_workflow.py t2i   <name> <seed> <w> <h> <prompt_file> [rmbg]
+       python comfy_workflow.py edit  <name> <seed> <w> <h> <prompt_file> <ref1[,ref2]> [rmbg]
+       python comfy_workflow.py style <name> <seed> <w> <h> <prompt_file> [rmbg]
 """
 import json, sys
 
@@ -21,6 +23,20 @@ if mode == 't2i':
         "30": {"class_type": "EmptyLatentImage", "inputs": {"width": int(w), "height": int(h), "batch_size": 1}},
         "31": {"class_type": "KSampler", "inputs": {"model": ["1", 0], "positive": ["20", 0], "negative": ["21", 0], "latent_image": ["30", 0],
                                                     "seed": int(seed), "steps": 8, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "denoise": 1}},
+    }
+elif mode == 'style':
+    wf = {
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "qwen_image_2.1_int8_convrot.safetensors", "weight_dtype": "default"}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen3-vl-8b-heretic-1.3.0_bf16.safetensors", "type": "qwen_image", "device": "default"}},
+        "3": {"class_type": "VAELoader", "inputs": {"vae_name": "qwen_image_2.1_vae_bf16.safetensors"}},
+        "4": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["1", 0], "lora_name": "nobuyabo\\nobuyabo.safetensors", "strength_model": 1}},
+        "5": {"class_type": "QwenImage21Cache", "inputs": {"model": ["4", 0], "device": "auto", "dtype": "default"}},
+        # 参照画像なし。ノードは 0 枚を許すが comfy-cli の事前検証は images キーを必須とするので、空で渡す
+        "20": {"class_type": "TextEncodeQwenImage21", "inputs": {"clip": ["2", 0], "vae": ["3", 0], "prompt": "nobuyabo style, " + prompt,
+                                                                 "negative_prompt": "", "resolution": 1024, "images": {}}},
+        "30": {"class_type": "EmptyLatentImage", "inputs": {"width": int(w), "height": int(h), "batch_size": 1}},
+        "31": {"class_type": "KSampler", "inputs": {"model": ["5", 0], "positive": ["20", 0], "negative": ["20", 1], "latent_image": ["30", 0],
+                                                    "seed": int(seed), "steps": 30, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "denoise": 1}},
     }
 else:
     refs = rest[0].split(',')
@@ -46,12 +62,16 @@ else:
         wf["21"]["inputs"][f"image{i+1}"] = [nid, 0]
 
 wf["32"] = {"class_type": "VAEDecode", "inputs": {"samples": ["31", 0], "vae": ["3", 0]}}
-wf["33"] = {"class_type": "SaveImage", "inputs": {"images": ["32", 0], "filename_prefix": f"tyajin/{name}_raw"}}
+picture = ["32", 0]
+if mode == 'style':                      # Qwen 2.1 の VAE は 4ch で出力するので RGB に落とす
+    wf["34"] = {"class_type": "SplitImageWithAlpha", "inputs": {"image": ["32", 0]}}
+    picture = ["34", 0]
+wf["33"] = {"class_type": "SaveImage", "inputs": {"images": picture, "filename_prefix": f"tyajin/{name}_raw"}}
 if rmbg:
     wf["40"] = {"class_type": "LoadBackgroundRemovalModel", "inputs": {"bg_removal_name": "birefnet.safetensors"}}
-    wf["41"] = {"class_type": "RemoveBackground", "inputs": {"bg_removal_model": ["40", 0], "image": ["32", 0]}}
+    wf["41"] = {"class_type": "RemoveBackground", "inputs": {"bg_removal_model": ["40", 0], "image": picture}}
     wf["42"] = {"class_type": "InvertMask", "inputs": {"mask": ["41", 0]}}
-    wf["43"] = {"class_type": "JoinImageWithAlpha", "inputs": {"image": ["32", 0], "alpha": ["42", 0]}}
+    wf["43"] = {"class_type": "JoinImageWithAlpha", "inputs": {"image": picture, "alpha": ["42", 0]}}
     wf["44"] = {"class_type": "SaveImage", "inputs": {"images": ["43", 0], "filename_prefix": f"tyajin/{name}"}}
 
 json.dump(wf, open(f"wf_{name}.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)

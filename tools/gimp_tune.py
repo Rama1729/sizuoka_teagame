@@ -1,5 +1,5 @@
 # GIMP 3 のバッチ (python-fu-eval) で実行する、ゲーム素材の微調整スクリプト。
-#   茶人 : 彩度を少し落とし、暗部を締め、左右と下を闇に溶かして縮小
+#   茶人 : 彩度を少し落とし、暗部を締め、左右と下を闇に溶かして縮小（young は利休度100％の若き茶人）
 #   背景 : 暗く沈め、彩度を落とし、軽くぼかして周辺減光
 #   和菓子: 余白を切り落として縮小
 import os, traceback
@@ -86,11 +86,16 @@ def sweet():
     save(img, 'wagashi.webp')
 
 try:
-    for n in ['idle', 'blink', 'watch', 'impressed', 'sigh', 'glare', 'nod', 'drink', 'smile', 'joy']:
-        portrait(n)
-    background('bg', 'chashitsu.webp', 720, 1280)
-    background('bgw', 'chashitsu_wide.webp', 1280, 720)
-    sweet()
+    only = os.environ.get('TUNE_NAMES')    # 指定すると、その茶人だけを作る（例: TUNE_NAMES=young）
+    if only:
+        for n in only.split(','):
+            portrait(n)
+    else:
+        for n in ['idle', 'blink', 'watch', 'impressed', 'sigh', 'glare', 'nod', 'drink', 'smile', 'joy']:
+            portrait(n)
+        background('bg', 'chashitsu.webp', 720, 1280)
+        background('bgw', 'chashitsu_wide.webp', 1280, 720)
+        sweet()
     log('done')
 except Exception:
     log(traceback.format_exc())
